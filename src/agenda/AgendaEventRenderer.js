@@ -117,10 +117,8 @@ function AgendaEventRenderer() {
 
 	function sliceSegs(events, rangeStart, rangeEnd) {
 
-		// normalize, because all dates will be compared w/o zones
-		rangeStart = rangeStart.clone().stripZone();
-		rangeEnd = rangeEnd.clone().stripZone();
-
+		rangeStart = rangeStart.clone();
+		rangeEnd = rangeEnd.clone();
 		var segs = [],
 			i, len=events.length, event,
 			eventStart, eventEnd,
@@ -131,8 +129,8 @@ function AgendaEventRenderer() {
 			event = events[i];
 
 			// get dates, make copies, then strip zone to normalize
-			eventStart = event.start.clone().stripZone();
-			eventEnd = getEventEnd(event).stripZone();
+			eventStart = event.start.clone();
+			eventEnd = getEventEnd(event);
 
 			if (eventEnd > rangeStart && eventStart < rangeEnd) {
 

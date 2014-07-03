@@ -101,38 +101,10 @@ function Calendar(element, instanceOptions) {
 	t.moment = function() {
 		var mom;
 
-		if (options.timezone === 'local') {
 			mom = fc.moment.apply(null, arguments);
-
-			// Force the moment to be local, because fc.moment doesn't guarantee it.
-			if (mom.hasTime()) { // don't give ambiguously-timed moments a local zone
-				mom.local();
-			}
-		}
-		else if (options.timezone === 'UTC') {
-			mom = fc.moment.utc.apply(null, arguments); // process as UTC
-		}
-		else {
-			mom = fc.moment.parseZone.apply(null, arguments); // let the input decide the zone
-		}
-
-		mom._lang = langData;
+  		mom._lang = langData;
 
 		return mom;
-	};
-
-
-	// Returns a boolean about whether or not the calendar knows how to calculate
-	// the timezone offset of arbitrary dates in the current timezone.
-	t.getIsAmbigTimezone = function() {
-		return options.timezone !== 'local' && options.timezone !== 'UTC';
-	};
-
-
-	// Returns a copy of the given date in the current timezone of it is ambiguously zoned.
-	// This will also give the date an unambiguous time.
-	t.rezoneDate = function(date) {
-		return t.moment(date.toArray());
 	};
 
 
@@ -184,10 +156,6 @@ function Calendar(element, instanceOptions) {
 		}
 		else {
 			end.add(t.defaultTimedEventDuration);
-		}
-
-		if (t.getIsAmbigTimezone()) {
-			end.stripZone(); // we don't know what the tzo should be
 		}
 
 		return end;
