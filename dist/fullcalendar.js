@@ -6543,7 +6543,7 @@ function SelectionManager() {
 					dates = null;
 				}
 			}, ev);
-			$(document).one('mouseup', function(ev) {
+			$(document).one('mouseup dblclick', function(ev) {
 				hoverListener.stop();
 				if (dates) {
 					if (+dates[0] == +dates[1]) {
