@@ -106,8 +106,10 @@ var defaults = {
 	dropAccept: '*',
 	
 	handleWindowResize: true,
-	windowResizeDelay: 200 // milliseconds before a rerender happens
-	
+	windowResizeDelay: 200, // milliseconds before a rerender happens
+	//Filters of the events
+  filters: []
+
 };
 
 
@@ -1232,7 +1234,8 @@ var eventGUID = 1;
 
 function EventManager(options) { // assumed to be a calendar
 	var t = this;
-	
+
+  window.console.log(options);
 	
 	// exports
 	t.isFetchNeeded = isFetchNeeded;
