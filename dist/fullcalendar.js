@@ -1234,8 +1234,7 @@ var eventGUID = 1;
 
 function EventManager(options) { // assumed to be a calendar
 	var t = this;
-
-  window.console.log(options);
+	
 	
 	// exports
 	t.isFetchNeeded = isFetchNeeded;
