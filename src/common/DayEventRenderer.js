@@ -305,6 +305,7 @@ function DayEventRenderer() {
 			var segment = segments[i];
 			var event = segment.event;
 			var element = elements.eq(i);
+			element.get(0).setAttribute('fullCalendar', JSON.stringify(segment));
 
 			// call the trigger with the original element
 			var triggerRes = trigger('eventRender', event, event, element);
@@ -372,6 +373,8 @@ function DayEventRenderer() {
 			);
 		});
 	}
+
+	fc.setVerticals = setVerticals;
 
 
 	// Calculate the "top" coordinate for each segment, relative to the "top" of the row.
