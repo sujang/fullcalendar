@@ -4539,6 +4539,7 @@ function AgendaEventRenderer() {
 	
 	
 	function slotSegHtml(event, seg) {
+    window.console.log(arguments, t);
 		var html = "<";
 		var url = event.url;
 		var skinCss = getSkinCss(event, opt);
