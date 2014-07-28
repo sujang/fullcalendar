@@ -460,12 +460,7 @@ function Calendar(element, instanceOptions) {
 
 	// Get an event's normalized end date. If not present, calculate it from the defaults.
 	t.getEventEnd = function(event) {
-		if (event.end) {
-			return event.end.clone();
-		}
-		else {
-			return t.getDefaultEventEnd(event.allDay, event.start);
-		}
+    return event.end || t.getDefaultEventEnd(event.allDay, event.start);
 	};
 
 
