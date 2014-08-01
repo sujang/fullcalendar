@@ -574,6 +574,7 @@ function AgendaView(element, calendar, viewName) {
 			if (match) {
 				var slotIndex = parseInt(match[1], 10);
 				date.add(minTime + slotIndex * slotDuration);
+				date = calendar.rezoneDate(date);
 				trigger(
 					'dayClick',
 					dayBodyCells[col],
@@ -627,6 +628,10 @@ function AgendaView(element, calendar, viewName) {
 	
 
 	function renderSlotOverlay(overlayStart, overlayEnd) {
+
+		// normalize, because dayStart/dayEnd have stripped time+zone
+		overlayStart = overlayStart.clone().stripZone();
+		overlayEnd = overlayEnd.clone().stripZone();
 
 		for (var i=0; i<colCnt; i++) { // loop through the day columns
 
@@ -737,6 +742,7 @@ function AgendaView(element, calendar, viewName) {
 
 		if (snapIndex >= 0) {
 			date.time(moment.duration(minTime + snapIndex * snapDuration));
+			date = calendar.rezoneDate(date);
 		}
 
 		return date;
@@ -746,7 +752,7 @@ function AgendaView(element, calendar, viewName) {
 	function computeDateTop(date, startOfDayDate) {
 		return computeTimeTop(
 			moment.duration(
-				date - startOfDayDate.clone().stripTime()
+				date.clone().stripZone() - startOfDayDate.clone().stripTime()
 			)
 		);
 	}
@@ -792,12 +798,22 @@ function AgendaView(element, calendar, viewName) {
 
 	
 	function defaultSelectionEnd(start) {
-		return start.clone().add(slotDuration);
+		if (start.hasTime()) {
+			return start.clone().add(slotDuration);
+		}
+		else {
+			return start.clone().add('days', 1);
+		}
 	}
 	
 	
 	function renderSelection(start, end) {
-		renderSlotSelection(start, end);
+		if (start.hasTime() || end.hasTime()) {
+			renderSlotSelection(start, end);
+		}
+		else if (opt('allDaySlot')) {
+			renderDayOverlay(start, end, true); // true for refreshing coordinate grid
+		}
 	}
 	
 	
@@ -910,8 +926,14 @@ function AgendaView(element, calendar, viewName) {
 			if (cell) {
 				var d1 = realCellToDate(cell);
 				var d2 = d1.clone();
-        d2.add(calendar.defaultTimedEventDuration);
-        renderSlotOverlay(d1, d2);
+				if (d1.hasTime()) {
+					d2.add(calendar.defaultTimedEventDuration);
+					renderSlotOverlay(d1, d2);
+				}
+				else {
+					d2.add(calendar.defaultAllDayEventDuration);
+					renderDayOverlay(d1, d2);
+				}
 			}
 		}, ev);
 	}

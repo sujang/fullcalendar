@@ -195,7 +195,6 @@ function View(element, calendar, viewName) {
 
 	
 	function eventDrop(el, event, newStart, ev, ui) {
-    backupEventDates(event);
 		var mutateResult = calendar.mutateEvent(event, newStart, null);
 
 		trigger(
@@ -216,7 +215,6 @@ function View(element, calendar, viewName) {
 
 
 	function eventResize(el, event, newEnd, ev, ui) {
-    backupEventDates(event);
 		var mutateResult = calendar.mutateEvent(event, null, newEnd);
 
 		trigger(
@@ -405,7 +403,7 @@ function View(element, calendar, viewName) {
 
 	// date -> day offset
 	function dateToDayOffset(date) {
-		return date.diff(t.start, 'days');
+		return date.clone().stripTime().diff(t.start, 'days');
 	}
 
 	// day offset -> cell offset

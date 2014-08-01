@@ -62,8 +62,8 @@ function EventManager(options) { // assumed to be a calendar
 	function isFetchNeeded(start, end) {
 		return !rangeStart || // nothing has been fetched yet?
 			// or, a part of the new range is outside of the old range? (after normalizing)
-        start < rangeStart ||
-        end > rangeEnd;
+			start.clone().stripZone() < rangeStart.clone().stripZone() ||
+			end.clone().stripZone() > rangeEnd.clone().stripZone();
 	}
 	
 	
@@ -303,7 +303,6 @@ function EventManager(options) { // assumed to be a calendar
 
 
 	function updateEvent(event) {
-    backupEventDates(event);
 
 		event.start = t.moment(event.start);
 		if (event.end) {
@@ -470,18 +469,29 @@ function EventManager(options) { // assumed to be a calendar
 			}
 			else {
 				// all dates need to have ambig time for the event to be considered allDay
-				allDay = false;
+				allDay = !start.hasTime() && (!end || !end.hasTime());
 			}
 		}
 
 		// normalize the date based on allDay
-    if (allDay) {
-      // neither date should have a time
-      start.stripTime();
-      if (end) {
-        end.stripTime();
-      }
-    }
+		if (allDay) {
+			// neither date should have a time
+			if (start.hasTime()) {
+				start.stripTime();
+			}
+			if (end && end.hasTime()) {
+				end.stripTime();
+			}
+		}
+		else {
+			// force a time/zone up the dates
+			if (!start.hasTime()) {
+				start = t.rezoneDate(start);
+			}
+			if (end && !end.hasTime()) {
+				end = t.rezoneDate(end);
+			}
+		}
 
 		// Copy all properties over to the resulting object.
 		// The special-case properties will be copied over afterwards.
@@ -512,6 +522,8 @@ function EventManager(options) { // assumed to be a calendar
 		if (options.forceEventDuration && !out.end) {
 			out.end = getEventEnd(out);
 		}
+
+		backupEventDates(out);
 
 		return out;
 	}
@@ -554,7 +566,7 @@ function EventManager(options) { // assumed to be a calendar
 			newAllDay = event.allDay;
 		}
 		else { // otherwise, see if any of the new dates are allDay
-			newAllDay = !newStart && !newEnd;
+			newAllDay = !(newStart || newEnd).hasTime();
 		}
 
 		// normalize the new dates based on allDay
@@ -618,6 +630,7 @@ function EventManager(options) { // assumed to be a calendar
 	// Returns a function that can be called to undo all the operations.
 	//
 	function mutateEvents(events, clearEnd, forceAllDay, dateDelta, durationDelta) {
+		var isAmbigTimezone = t.getIsAmbigTimezone();
 		var undoFunctions = [];
 
 		$.each(events, function(i, event) {
@@ -638,6 +651,14 @@ function EventManager(options) { // assumed to be a calendar
 					newEnd.stripTime();
 				}
 			}
+			else {
+				if (!newStart.hasTime()) {
+					newStart = t.rezoneDate(newStart);
+				}
+				if (newEnd && !newEnd.hasTime()) {
+					newEnd = t.rezoneDate(newEnd);
+				}
+			}
 
 			// ensure we have an end date if necessary
 			if (!newEnd && (options.forceEventDuration || +durationDelta)) {
@@ -648,6 +669,17 @@ function EventManager(options) { // assumed to be a calendar
 			newStart.add(dateDelta);
 			if (newEnd) {
 				newEnd.add(dateDelta).add(durationDelta);
+			}
+
+			// if the dates have changed, and we know it is impossible to recompute the
+			// timezone offsets, strip the zone.
+			if (isAmbigTimezone) {
+				if (+dateDelta || +durationDelta) {
+					newStart.stripZone();
+					if (newEnd) {
+						newEnd.stripZone();
+					}
+				}
 			}
 
 			event.allDay = newAllDay;
