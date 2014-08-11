@@ -423,10 +423,38 @@ function Calendar(element, instanceOptions) {
 	t.moment = function() {
 		var mom;
 
+		if (options.timezone === 'local') {
 			mom = fc.moment.apply(null, arguments);
-  		mom._lang = langData;
+
+			// Force the moment to be local, because fc.moment doesn't guarantee it.
+			if (mom.hasTime()) { // don't give ambiguously-timed moments a local zone
+				mom.local();
+			}
+		}
+		else if (options.timezone === 'UTC') {
+			mom = fc.moment.utc.apply(null, arguments); // process as UTC
+		}
+		else {
+			mom = fc.moment.parseZone.apply(null, arguments); // let the input decide the zone
+		}
+
+		mom._lang = langData;
 
 		return mom;
+	};
+
+
+	// Returns a boolean about whether or not the calendar knows how to calculate
+	// the timezone offset of arbitrary dates in the current timezone.
+	t.getIsAmbigTimezone = function() {
+		return options.timezone !== 'local' && options.timezone !== 'UTC';
+	};
+
+
+	// Returns a copy of the given date in the current timezone of it is ambiguously zoned.
+	// This will also give the date an unambiguous time.
+	t.rezoneDate = function(date) {
+		return t.moment(date.toArray());
 	};
 
 
@@ -473,6 +501,10 @@ function Calendar(element, instanceOptions) {
 		}
 		else {
 			end.add(t.defaultTimedEventDuration);
+		}
+
+		if (t.getIsAmbigTimezone()) {
+			end.stripZone(); // we don't know what the tzo should be
 		}
 
 		return end;
@@ -1279,8 +1311,8 @@ function EventManager(options) { // assumed to be a calendar
 	function isFetchNeeded(start, end) {
 		return !rangeStart || // nothing has been fetched yet?
 			// or, a part of the new range is outside of the old range? (after normalizing)
-        start < rangeStart ||
-        end > rangeEnd;
+			start.clone().stripZone() < rangeStart.clone().stripZone() ||
+			end.clone().stripZone() > rangeEnd.clone().stripZone();
 	}
 	
 	
@@ -1520,7 +1552,6 @@ function EventManager(options) { // assumed to be a calendar
 
 
 	function updateEvent(event) {
-    backupEventDates(event);
 
 		event.start = t.moment(event.start);
 		if (event.end) {
@@ -1687,18 +1718,29 @@ function EventManager(options) { // assumed to be a calendar
 			}
 			else {
 				// all dates need to have ambig time for the event to be considered allDay
-				allDay = false;
+				allDay = !start.hasTime() && (!end || !end.hasTime());
 			}
 		}
 
 		// normalize the date based on allDay
-    if (allDay) {
-      // neither date should have a time
-      start.stripTime();
-      if (end) {
-        end.stripTime();
-      }
-    }
+		if (allDay) {
+			// neither date should have a time
+			if (start.hasTime()) {
+				start.stripTime();
+			}
+			if (end && end.hasTime()) {
+				end.stripTime();
+			}
+		}
+		else {
+			// force a time/zone up the dates
+			if (!start.hasTime()) {
+				start = t.rezoneDate(start);
+			}
+			if (end && !end.hasTime()) {
+				end = t.rezoneDate(end);
+			}
+		}
 
 		// Copy all properties over to the resulting object.
 		// The special-case properties will be copied over afterwards.
@@ -1729,6 +1771,8 @@ function EventManager(options) { // assumed to be a calendar
 		if (options.forceEventDuration && !out.end) {
 			out.end = getEventEnd(out);
 		}
+
+		backupEventDates(out);
 
 		return out;
 	}
@@ -1771,7 +1815,7 @@ function EventManager(options) { // assumed to be a calendar
 			newAllDay = event.allDay;
 		}
 		else { // otherwise, see if any of the new dates are allDay
-			newAllDay = !newStart && !newEnd;
+			newAllDay = !(newStart || newEnd).hasTime();
 		}
 
 		// normalize the new dates based on allDay
@@ -1835,6 +1879,7 @@ function EventManager(options) { // assumed to be a calendar
 	// Returns a function that can be called to undo all the operations.
 	//
 	function mutateEvents(events, clearEnd, forceAllDay, dateDelta, durationDelta) {
+		var isAmbigTimezone = t.getIsAmbigTimezone();
 		var undoFunctions = [];
 
 		$.each(events, function(i, event) {
@@ -1855,6 +1900,14 @@ function EventManager(options) { // assumed to be a calendar
 					newEnd.stripTime();
 				}
 			}
+			else {
+				if (!newStart.hasTime()) {
+					newStart = t.rezoneDate(newStart);
+				}
+				if (newEnd && !newEnd.hasTime()) {
+					newEnd = t.rezoneDate(newEnd);
+				}
+			}
 
 			// ensure we have an end date if necessary
 			if (!newEnd && (options.forceEventDuration || +durationDelta)) {
@@ -1865,6 +1918,17 @@ function EventManager(options) { // assumed to be a calendar
 			newStart.add(dateDelta);
 			if (newEnd) {
 				newEnd.add(dateDelta).add(durationDelta);
+			}
+
+			// if the dates have changed, and we know it is impossible to recompute the
+			// timezone offsets, strip the zone.
+			if (isAmbigTimezone) {
+				if (+dateDelta || +durationDelta) {
+					newStart.stripZone();
+					if (newEnd) {
+						newEnd.stripZone();
+					}
+				}
 			}
 
 			event.allDay = newAllDay;
@@ -2183,23 +2247,111 @@ function firstDefined() {
 
 ;;
 
+var ambigDateOfMonthRegex = /^\s*\d{4}-\d\d$/;
+var ambigTimeOrZoneRegex = /^\s*\d{4}-(?:(\d\d-\d\d)|(W\d\d$)|(W\d\d-\d)|(\d\d\d))((T| )(\d\d(:\d\d(:\d\d(\.\d+)?)?)?)?)?$/;
+
+
 // Creating
 // -------------------------------------------------------------------------------------------------
 
 // Creates a new moment, similar to the vanilla moment(...) constructor, but with
-// extra features (enhanced formatting). When gived an existing moment,
+// extra features (ambiguous time, enhanced formatting). When gived an existing moment,
 // it will function as a clone (and retain the zone of the moment). Anything else will
 // result in a moment in the local zone.
 fc.moment = function() {
-  return makeMoment(arguments[0]);
+	return makeMoment(arguments);
+};
+
+// Sames as fc.moment, but forces the resulting moment to be in the UTC timezone.
+fc.moment.utc = function() {
+	var mom = makeMoment(arguments, true);
+
+	// Force it into UTC because makeMoment doesn't guarantee it.
+	if (mom.hasTime()) { // don't give ambiguously-timed moments a UTC zone
+		mom.utc();
+	}
+
+	return mom;
+};
+
+// Same as fc.moment, but when given an ISO8601 string, the timezone offset is preserved.
+// ISO8601 strings with no timezone offset will become ambiguously zoned.
+fc.moment.parseZone = function() {
+	return makeMoment(arguments, true, true);
 };
 
 // Builds an FCMoment from args. When given an existing moment, it clones. When given a native
 // Date, or called with no arguments (the current time), the resulting moment will be local.
-function makeMoment(input) {
-  //input = (moment.isMoment(input)) ? input : moment.apply(null, [input]);
-  //return new FCMoment(input);
-  return new FCMoment(moment.apply(null, [input]));
+// Anything else needs to be "parsed" (a string or an array), and will be affected by:
+//    parseAsUTC - if there is no zone information, should we parse the input in UTC?
+//    parseZone - if there is zone information, should we force the zone of the moment?
+function makeMoment(args, parseAsUTC, parseZone) {
+	var input = args[0];
+	var isSingleString = args.length == 1 && typeof input === 'string';
+	var isAmbigTime;
+	var isAmbigZone;
+	var ambigMatch;
+	var output; // an object with fields for the new FCMoment object
+
+	if (moment.isMoment(input)) {
+		output = moment.apply(null, args); // clone it
+
+		// the ambig properties have not been preserved in the clone, so reassign them
+		if (input._ambigTime) {
+			output._ambigTime = true;
+		}
+		if (input._ambigZone) {
+			output._ambigZone = true;
+		}
+	}
+	else if (isNativeDate(input) || input === undefined) {
+		output = moment.apply(null, args); // will be local
+	}
+	else { // "parsing" is required
+		isAmbigTime = false;
+		isAmbigZone = false;
+
+		if (isSingleString) {
+			if (ambigDateOfMonthRegex.test(input)) {
+				// accept strings like '2014-05', but convert to the first of the month
+				input += '-01';
+				args = [ input ]; // for when we pass it on to moment's constructor
+				isAmbigTime = true;
+				isAmbigZone = true;
+			}
+			else if ((ambigMatch = ambigTimeOrZoneRegex.exec(input))) {
+				isAmbigTime = !ambigMatch[5]; // no time part?
+				isAmbigZone = true;
+			}
+		}
+		else if ($.isArray(input)) {
+			// arrays have no timezone information, so assume ambiguous zone
+			isAmbigZone = true;
+		}
+		// otherwise, probably a string with a format
+
+		if (parseAsUTC) {
+			output = moment.utc.apply(moment, args);
+		}
+		else {
+			output = moment.apply(null, args);
+		}
+
+		if (isAmbigTime) {
+			output._ambigTime = true;
+			output._ambigZone = true; // ambiguous time always means ambiguous zone
+		}
+		else if (parseZone) { // let's record the inputted zone somehow
+			if (isAmbigZone) {
+				output._ambigZone = true;
+			}
+			else if (isSingleString) {
+				output.zone(input); // if not a valid zone, will assign UTC
+			}
+		}
+	}
+
+	return new FCMoment(output);
 }
 
 // Our subclass of Moment.
@@ -2216,7 +2368,7 @@ FCMoment.prototype = createObject(moment.fn);
 // We need this because Moment's implementation won't create an FCMoment,
 // nor will it copy over the ambig flags.
 FCMoment.prototype.clone = function() {
-	return makeMoment(this);
+	return makeMoment([ this ]);
 };
 
 
@@ -2225,9 +2377,11 @@ FCMoment.prototype.clone = function() {
 
 // GETTER
 // Returns a Duration with the hours/minutes/seconds/ms values of the moment.
+// If the moment has an ambiguous time, a duration of 00:00 will be returned.
 //
 // SETTER
 // You can supply a Duration, a Moment, or a Duration-like argument.
+// When setting the time, and the moment has an ambiguous time, it then becomes unambiguous.
 FCMoment.prototype.time = function(time) {
 	if (time == null) { // getter
 		return moment.duration({
@@ -2238,6 +2392,8 @@ FCMoment.prototype.time = function(time) {
 		});
 	}
 	else { // setter
+
+		delete this._ambigTime; // mark that the moment now has a time
 
 		if (!moment.isDuration(time) && !moment.isMoment(time)) {
 			time = moment.duration(time);
@@ -2265,13 +2421,117 @@ FCMoment.prototype.time = function(time) {
 FCMoment.prototype.stripTime = function() {
 	var a = this.toArray(); // year,month,date,hours,minutes,seconds as an array
 
-	this.hours(0)
+	// set the internal UTC flag
+	moment.fn.utc.call(this); // call the original method, because we don't want to affect _ambigZone
+
+	this.year(a[0]) // TODO: find a way to do this in one shot
+		.month(a[1])
+		.date(a[2])
+		.hours(0)
 		.minutes(0)
 		.seconds(0)
 		.milliseconds(0);
 
+	// Mark the time as ambiguous. This needs to happen after the .utc() call, which calls .zone(), which
+	// clears all ambig flags. Same concept with the .year/month/date calls in the case of moment-timezone.
+	this._ambigTime = true;
+	this._ambigZone = true; // if ambiguous time, also ambiguous timezone offset
+
 	return this; // for chaining
 };
+
+// Returns if the moment has a non-ambiguous time (boolean)
+FCMoment.prototype.hasTime = function() {
+	return !this._ambigTime;
+};
+
+
+// Timezone
+// -------------------------------------------------------------------------------------------------
+
+// Converts the moment to UTC, stripping out its timezone offset, but preserving its
+// YMD and time-of-day. A moment with a stripped timezone offset will display no
+// timezone offset when .format() is called.
+FCMoment.prototype.stripZone = function() {
+	var a = this.toArray(); // year,month,date,hours,minutes,seconds as an array
+	var wasAmbigTime = this._ambigTime;
+
+	moment.fn.utc.call(this); // set the internal UTC flag
+
+	this.year(a[0]) // TODO: find a way to do this in one shot
+		.month(a[1])
+		.date(a[2])
+		.hours(a[3])
+		.minutes(a[4])
+		.seconds(a[5])
+		.milliseconds(a[6]);
+
+	if (wasAmbigTime) {
+		// the above call to .utc()/.zone() unfortunately clears the ambig flags, so reassign
+		this._ambigTime = true;
+	}
+
+	// Mark the zone as ambiguous. This needs to happen after the .utc() call, which calls .zone(), which
+	// clears all ambig flags. Same concept with the .year/month/date calls in the case of moment-timezone.
+	this._ambigZone = true;
+
+	return this; // for chaining
+};
+
+// Returns of the moment has a non-ambiguous timezone offset (boolean)
+FCMoment.prototype.hasZone = function() {
+	return !this._ambigZone;
+};
+
+// this method implicitly marks a zone
+FCMoment.prototype.zone = function(tzo) {
+
+	if (tzo != null) {
+		// FYI, the delete statements need to be before the .zone() call or else chaos ensues
+		// for reasons I don't understand. 
+		delete this._ambigTime;
+		delete this._ambigZone;
+	}
+
+	return moment.fn.zone.apply(this, arguments);
+};
+
+// this method implicitly marks a zone
+FCMoment.prototype.local = function() {
+	var a = this.toArray(); // year,month,date,hours,minutes,seconds as an array
+	var wasAmbigZone = this._ambigZone;
+
+	// will happen anyway via .local()/.zone(), but don't want to rely on internal implementation
+	delete this._ambigTime;
+	delete this._ambigZone;
+
+	moment.fn.local.apply(this, arguments);
+
+	if (wasAmbigZone) {
+		// If the moment was ambiguously zoned, the date fields were stored as UTC.
+		// We want to preserve these, but in local time.
+		this.year(a[0]) // TODO: find a way to do this in one shot
+			.month(a[1])
+			.date(a[2])
+			.hours(a[3])
+			.minutes(a[4])
+			.seconds(a[5])
+			.milliseconds(a[6]);
+	}
+
+	return this; // for chaining
+};
+
+// this method implicitly marks a zone
+FCMoment.prototype.utc = function() {
+
+	// will happen anyway via .local()/.zone(), but don't want to rely on internal implementation
+	delete this._ambigTime;
+	delete this._ambigZone;
+
+	return moment.fn.utc.apply(this, arguments);
+};
+
 
 // Formatting
 // -------------------------------------------------------------------------------------------------
@@ -2280,9 +2540,24 @@ FCMoment.prototype.format = function() {
 	if (arguments[0]) {
 		return formatDate(this, arguments[0]); // our extended formatting
 	}
+	if (this._ambigTime) {
+		return momentFormat(this, 'YYYY-MM-DD');
+	}
+	if (this._ambigZone) {
+		return momentFormat(this, 'YYYY-MM-DD[T]HH:mm:ss');
+	}
 	return momentFormat(this); // default moment original formatting
 };
 
+FCMoment.prototype.toISOString = function() {
+	if (this._ambigTime) {
+		return momentFormat(this, 'YYYY-MM-DD');
+	}
+	if (this._ambigZone) {
+		return momentFormat(this, 'YYYY-MM-DD[T]HH:mm:ss');
+	}
+	return moment.fn.toISOString.apply(this, arguments);
+};
 
 
 // Querying
@@ -2290,7 +2565,8 @@ FCMoment.prototype.format = function() {
 
 // Is the moment within the specified range? `end` is exclusive.
 FCMoment.prototype.isWithin = function(start, end) {
-  return this >= start && this < end;
+	var a = commonlyAmbiguate([ this, start, end ]);
+	return a[0] >= a[1] && a[0] < a[2];
 };
 
 // Make these query methods work with ambiguous moments
@@ -2300,9 +2576,40 @@ $.each([
 	'isSame'
 ], function(i, methodName) {
 	FCMoment.prototype[methodName] = function(input, units) {
-    return moment.fn[methodName].call(this, input, units);
+		var a = commonlyAmbiguate([ this, input ]);
+		return moment.fn[methodName].call(a[0], a[1], units);
 	};
 });
+
+
+// Misc Internals
+// -------------------------------------------------------------------------------------------------
+
+// given an array of moment-like inputs, return a parallel array w/ moments similarly ambiguated.
+// for example, of one moment has ambig time, but not others, all moments will have their time stripped.
+function commonlyAmbiguate(inputs) {
+	var outputs = [];
+	var anyAmbigTime = false;
+	var anyAmbigZone = false;
+	var i;
+
+	for (i=0; i<inputs.length; i++) {
+		outputs.push(fc.moment(inputs[i]));
+		anyAmbigTime = anyAmbigTime || outputs[i]._ambigTime;
+		anyAmbigZone = anyAmbigZone || outputs[i]._ambigZone;
+	}
+
+	for (i=0; i<outputs.length; i++) {
+		if (anyAmbigTime) {
+			outputs[i].stripTime();
+		}
+		else if (anyAmbigZone) {
+			outputs[i].stripZone();
+		}
+	}
+
+	return outputs;
+}
 
 ;;
 
@@ -2379,6 +2686,9 @@ function formatDateWithChunk(date, chunk) {
 // If the dates are the same as far as the format string is concerned, just return a single
 // rendering of one date, without any separator.
 function formatRange(date1, date2, formatStr, separator, isRTL) {
+
+	date1 = fc.moment.parseZone(date1);
+	date2 = fc.moment.parseZone(date2);
 
 	// Expand localized format strings, like "LL" -> "MMMM D YYYY"
 	formatStr = date1.lang().longDateFormat(formatStr) || formatStr;
@@ -3860,6 +4170,7 @@ function AgendaView(element, calendar, viewName) {
 			if (match) {
 				var slotIndex = parseInt(match[1], 10);
 				date.add(minTime + slotIndex * slotDuration);
+				date = calendar.rezoneDate(date);
 				trigger(
 					'dayClick',
 					dayBodyCells[col],
@@ -3913,6 +4224,10 @@ function AgendaView(element, calendar, viewName) {
 	
 
 	function renderSlotOverlay(overlayStart, overlayEnd) {
+
+		// normalize, because dayStart/dayEnd have stripped time+zone
+		overlayStart = overlayStart.clone().stripZone();
+		overlayEnd = overlayEnd.clone().stripZone();
 
 		for (var i=0; i<colCnt; i++) { // loop through the day columns
 
@@ -4023,6 +4338,7 @@ function AgendaView(element, calendar, viewName) {
 
 		if (snapIndex >= 0) {
 			date.time(moment.duration(minTime + snapIndex * snapDuration));
+			date = calendar.rezoneDate(date);
 		}
 
 		return date;
@@ -4032,7 +4348,7 @@ function AgendaView(element, calendar, viewName) {
 	function computeDateTop(date, startOfDayDate) {
 		return computeTimeTop(
 			moment.duration(
-				date - startOfDayDate.clone().stripTime()
+				date.clone().stripZone() - startOfDayDate.clone().stripTime()
 			)
 		);
 	}
@@ -4078,12 +4394,22 @@ function AgendaView(element, calendar, viewName) {
 
 	
 	function defaultSelectionEnd(start) {
-		return start.clone().add(slotDuration);
+		if (start.hasTime()) {
+			return start.clone().add(slotDuration);
+		}
+		else {
+			return start.clone().add('days', 1);
+		}
 	}
 	
 	
 	function renderSelection(start, end) {
-		renderSlotSelection(start, end);
+		if (start.hasTime() || end.hasTime()) {
+			renderSlotSelection(start, end);
+		}
+		else if (opt('allDaySlot')) {
+			renderDayOverlay(start, end, true); // true for refreshing coordinate grid
+		}
 	}
 	
 	
@@ -4196,8 +4522,14 @@ function AgendaView(element, calendar, viewName) {
 			if (cell) {
 				var d1 = realCellToDate(cell);
 				var d2 = d1.clone();
-        d2.add(calendar.defaultTimedEventDuration);
-        renderSlotOverlay(d1, d2);
+				if (d1.hasTime()) {
+					d2.add(calendar.defaultTimedEventDuration);
+					renderSlotOverlay(d1, d2);
+				}
+				else {
+					d2.add(calendar.defaultAllDayEventDuration);
+					renderDayOverlay(d1, d2);
+				}
 			}
 		}, ev);
 	}
@@ -4340,8 +4672,10 @@ function AgendaEventRenderer() {
 
 	function sliceSegs(events, rangeStart, rangeEnd) {
 
-		rangeStart = rangeStart.clone();
-		rangeEnd = rangeEnd.clone();
+		// normalize, because all dates will be compared w/o zones
+		rangeStart = rangeStart.clone().stripZone();
+		rangeEnd = rangeEnd.clone().stripZone();
+
 		var segs = [],
 			i, len=events.length, event,
 			eventStart, eventEnd,
@@ -4352,8 +4686,8 @@ function AgendaEventRenderer() {
 			event = events[i];
 
 			// get dates, make copies, then strip zone to normalize
-			eventStart = event.start.clone();
-			eventEnd = getEventEnd(event);
+			eventStart = event.start.clone().stripZone();
+			eventEnd = getEventEnd(event).stripZone();
 
 			if (eventEnd > rangeStart && eventStart < rangeEnd) {
 
@@ -4534,7 +4868,6 @@ function AgendaEventRenderer() {
 	
 	
 	function slotSegHtml(event, seg) {
-    window.console.log(arguments, t);
 		var html = "<";
 		var url = event.url;
 		var skinCss = getSkinCss(event, opt);
@@ -5361,7 +5694,6 @@ function View(element, calendar, viewName) {
 
 	
 	function eventDrop(el, event, newStart, ev, ui) {
-    backupEventDates(event);
 		var mutateResult = calendar.mutateEvent(event, newStart, null);
 
 		trigger(
@@ -5382,7 +5714,6 @@ function View(element, calendar, viewName) {
 
 
 	function eventResize(el, event, newEnd, ev, ui) {
-    backupEventDates(event);
 		var mutateResult = calendar.mutateEvent(event, null, newEnd);
 
 		trigger(
@@ -5571,7 +5902,7 @@ function View(element, calendar, viewName) {
 
 	// date -> day offset
 	function dateToDayOffset(date) {
-		return date.diff(t.start, 'days');
+		return date.clone().stripTime().diff(t.start, 'days');
 	}
 
 	// day offset -> cell offset
