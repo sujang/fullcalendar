@@ -1,7 +1,7 @@
 
-fcViews.basicDay = BasicDayView;
+fcViews.resourceDay = ResourceDayView;
 
-function BasicDayView(element, calendar) { // TODO: make a DayView mixin
+function ResourceDayView(element, calendar) { // TODO: make a DayView mixin
 	var t = this;
 	
 	
@@ -11,8 +11,8 @@ function BasicDayView(element, calendar) { // TODO: make a DayView mixin
 	
 	
 	// imports
-	BasicView.call(t, element, calendar, 'basicDay');
-
+	ResourceView.call(t, element, calendar, 'resourceDay');
+	var getResources = t.getResources;
 
 	function incrementDate(date, delta) {
 		var out = date.clone().stripTime().add(delta, 'days');
@@ -28,8 +28,8 @@ function BasicDayView(element, calendar) { // TODO: make a DayView mixin
 
 		t.title = calendar.formatDate(t.start, t.opt('titleFormat'));
 
-		t.renderBasic(1, 1, false);
+		t.renderResource(getResources().length);
 	}
 	
-	
+
 }

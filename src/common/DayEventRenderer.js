@@ -166,21 +166,55 @@ function DayEventRenderer() {
 
 	// Generate an array of "segments" for all events.
 	function buildSegments(events) {
+		var resources = t.getResources;
 		var segments = [];
-		for (var i=0; i<events.length; i++) {
-			var eventSegments = buildSegmentsForEvent(events[i]);
-			segments.push.apply(segments, eventSegments); // append an array to an array
+		var i, eventSegments;
+
+		if (typeof resources === 'undefined'){
+			for (i=0; i<events.length; i++) {
+				eventSegments = buildSegmentsForEvent(events[i]);
+				segments.push.apply(segments, eventSegments); // append an array to an array
+			}
+		} else {
+			for (i=0; i<resources().length; i++) {
+				var resourceEvents = eventsForResource(resources()[i], events);
+
+				for (var j=0; j<resourceEvents.length; j++) {
+					eventSegments = buildSegmentsForEvent(resourceEvents[j], i);
+					segments.push.apply(segments, eventSegments); // append an array to an array
+
+				}
+			}
 		}
 		return segments;
 	}
 
+	function eventsForResource(resource, events) {
+	    var resourceEvents = [];
+		var hasResource = function(event) {
+			return event.resources && $.grep(event.resources, function(id) {
+				return id == resource.id;
+			}).length;
+		};
 
+	    for (var i = 0; i < events.length; i++) {
+			if (hasResource(events[i])) {
+				resourceEvents.push(events[i]);
+			}
+		}
+		return resourceEvents;
+	}
+	  
 	// Generate an array of segments for a single event.
 	// A "segment" is the same data structure that View.rangeToSegments produces,
 	// with the addition of the `event` property being set to reference the original event.
-	function buildSegmentsForEvent(event) {
+	function buildSegmentsForEvent(event, resourceCol) {
 		var segments = rangeToSegments(event.start, getEventEnd(event));
 		for (var i=0; i<segments.length; i++) {
+			if (typeof resourceCol !== 'undefined'){
+				segments[i].leftCol = resourceCol;
+				segments[i].rightCol = resourceCol;
+			}
 			segments[i].event = event;
 		}
 		return segments;
@@ -584,10 +618,10 @@ function DayEventRenderer() {
 						var origCellDate = cellToDate(origCell);
 						var cellDate = cellToDate(cell);
 						dayDelta = cellDate.diff(origCellDate, 'days');
-						eventStart = event.start.clone().add('days', dayDelta);
+						eventStart = event.start.clone().add(dayDelta, 'days');
 						renderDayOverlay(
 							eventStart,
-							getEventEnd(event).add('days', dayDelta)
+							getEventEnd(event).add(dayDelta, 'days')
 						);
 					}
 					else {
@@ -667,7 +701,7 @@ function DayEventRenderer() {
 						cellOffsetToDayOffset(cellOffset) -
 						cellOffsetToDayOffset(origCellOffset);
 
-					eventEnd = getEventEnd(event).add('days', dayDelta); // assumed to already have a stripped time
+					eventEnd = getEventEnd(event).add(dayDelta, 'days'); // assumed to already have a stripped time
 
 					if (dayDelta) {
 						eventCopy.end = eventEnd;

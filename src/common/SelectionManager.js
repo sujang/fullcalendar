@@ -91,13 +91,13 @@ function SelectionManager() {
 					dates = [ cellToDate(origCell), cellToDate(cell) ].sort(dateCompare);
 					renderSelection(
 						dates[0],
-						dates[1].clone().add('days', 1) // make exclusive
+						dates[1].clone().add(1, 'days') // make exclusive
 					);
 				}else{
 					dates = null;
 				}
 			}, ev);
-			$(document).one('mouseup dblclick', function(ev) {
+			$(document).one('mouseup', function(ev) {
 				hoverListener.stop();
 				if (dates) {
 					if (+dates[0] == +dates[1]) {
@@ -105,7 +105,7 @@ function SelectionManager() {
 					}
 					reportSelection(
 						dates[0],
-						dates[1].clone().add('days', 1), // make exclusive
+						dates[1].clone().add(1, 'days'), // make exclusive
 						ev
 					);
 				}

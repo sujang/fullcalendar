@@ -2,8 +2,8 @@
   "name": "fullcalendar",
   "version": "2.0.2",
 
-  "description": "Full-sized drag & drop event calendar",
-  "keywords": [ "calendar", "event", "full-sized" ],
+  "description": "Full-sized drag & drop event calendar with resources",
+  "keywords": [ "calendar", "event", "full-sized", "resources" ],
   "homepage": "http://arshaw.com/fullcalendar/",
 
   "dependencies": {
@@ -15,10 +15,10 @@
   },
 
   "title": "FullCalendar",
-  "demo": "http://arshaw.com/fullcalendar/",
+  "demo": "",
   "docs": "http://arshaw.com/fullcalendar/docs/",
-  "download": "http://arshaw.com/fullcalendar/download/",
-  "bugs": "http://arshaw.com/fullcalendar/support/",
+  "download": "",
+  "bugs": "https://github.com/seankenny/fullcalendar/issues",
 
   "licenses": [
     {
@@ -28,9 +28,9 @@
   ],
 
   "author": {
-    "name": "Adam Shaw",
-    "email": "arshaw@arshaw.com",
-    "url": "http://arshaw.com/"
+    "name": "Adam Shaw, Sean Kenny",
+    "email": "srkenny@gmail.com",
+    "url": "http://seankenny.me/"
   },
-  "copyright": "2013 Adam Shaw"
+  "copyright": "2014 Adam Shaw, Sean Kenny"
 }

@@ -1,3 +1,10 @@
+#THIS BRANCH IS A WORK IN PROGRESS FOR NOW
+
+#FORK INFO
+This fork adds a vertical resource view to FullCalendar.
+
+[plunkr demo](http://plnkr.co/KRXcK2oNd9eX2IMBM6yY).
+
 # FullCalendar
 
 A full-sized drag & drop event calendar (jQuery plugin).

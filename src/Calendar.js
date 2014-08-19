@@ -65,7 +65,7 @@ function Calendar(element, instanceOptions) {
 	// Apply overrides to the current language's data
 
 	var langData = createObject( // make a cheap clone
-		moment.langData(options.lang)
+		moment.localeData(options.lang)
 	);
 
 	if (options.monthNames) {
@@ -166,7 +166,12 @@ function Calendar(element, instanceOptions) {
 
 	// Get an event's normalized end date. If not present, calculate it from the defaults.
 	t.getEventEnd = function(event) {
-    return event.end || t.getDefaultEventEnd(event.allDay, event.start);
+		if (event.end) {
+			return event.end.clone();
+		}
+		else {
+			return t.getDefaultEventEnd(event.allDay, event.start);
+		}
 	};
 
 
@@ -224,6 +229,7 @@ function Calendar(element, instanceOptions) {
 
 
 	EventManager.call(t, options);
+	ResourceManager.call(t, options);
 	var isFetchNeeded = t.isFetchNeeded;
 	var fetchEvents = t.fetchEvents;
 
