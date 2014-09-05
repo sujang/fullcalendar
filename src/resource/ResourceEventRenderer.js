@@ -25,7 +25,7 @@ function ResourceEventRenderer() {
 	var colContentLeft = t.colContentLeft;
 	var colContentRight = t.colContentRight;
 	var cellToDate = t.cellToDate;
-	var getColCnt = function() { return resources().length; };
+	var getColCnt = function() { return getResources().length; };
 	var getColWidth = t.getColWidth;
 	var getSnapHeight = t.getSnapHeight;
 	var getSnapDuration = t.getSnapDuration;
@@ -45,7 +45,7 @@ function ResourceEventRenderer() {
 	var calendar = t.calendar;
 	var formatDate = calendar.formatDate;
 	var getEventEnd = calendar.getEventEnd;
-	var resources = t.getResources;
+	var getResources = t.getResources;
 	
 
 	// overrides
@@ -96,7 +96,7 @@ function ResourceEventRenderer() {
 
 		for (i=0; i<colCnt; i++) {
 			cellDate = cellToDate(0, 0);  // updated - should show same day for all
-			var resourceEvents = eventsForResource(resources()[i], events);
+			var resourceEvents = eventsForResource(getResources()[i], events);
 			colSegs = sliceSegs(
 				resourceEvents,
 				cellDate.clone().time(minTime),
@@ -489,9 +489,14 @@ function ResourceEventRenderer() {
 				else { // changed!
 					// calculate column delta
 					var newCol = Math.round((eventElement.offset().left - getSlotContainer().offset().left) / colWidth);
+					// if (newCol !== origCol){
+					// 	event.resources = [ resources()[newCol].id ];
+					// }
+					var resources = event.resources;
 					if (newCol !== origCol){
-						event.resources = [ resources()[newCol].id ];
+						resources = [ getResources()[newCol].id ];
 					}
+
 					var eventStart = event.start.clone(); // already assumed to have a stripped time
 					var snapTime;
 					var snapIndex;
@@ -504,6 +509,7 @@ function ResourceEventRenderer() {
 					eventDrop(
 						eventElement[0],
 						event,
+						resources,
 						eventStart,
 						ev,
 						ui
@@ -637,12 +643,14 @@ function ResourceEventRenderer() {
 				trigger('eventDragStop', eventElement[0], event, ev, ui);
 
 				if (isInBounds && (isAllDay || resourceDelta || snapDelta)) { // changed!
-					if (resourceDelta){
-						event.resources = [ resources()[origCell.col + resourceDelta].id ];
-					}
+					var resources = event.resources;
+					 if (resourceDelta){
+						resources = [ getResources()[origCell.col + resourceDelta].id ];
+					 }
 					eventDrop(
 						eventElement[0],
 						event,
+						resources,
 						eventStart,
 						ev,
 						ui
