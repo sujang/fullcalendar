@@ -4513,8 +4513,14 @@ $.extend(Grid.prototype, {
 						view.trigger('dayClick', dayEl[0], start, ev);
 					}
 					if (isSelectable) {
+						var resources;
+						if(view.name === 'resourceDay') {
+							resources = $.map(dayEl, function(column) {
+								return view.resources()[ $(column).index()-1 ].id;
+							});
+						}
 						// the selection will already have been rendered. just report it
-						view.reportSelection(start, end, ev);
+						view.reportSelection(start, end, ev, resources);
 					}
 				}
 			}
@@ -8916,6 +8922,16 @@ $.extend(ResourceView.prototype, {
 		return event.resources && $.grep(event.resources, function(id) {
 			return id == resource.id;
 		}).length;
+	},
+
+	// Called when a new selection is made. Updates internal state and triggers handlers.
+	reportSelection: function(start, end, ev, resources) {
+		this.isSelected = true;
+
+		this.calendar.trigger.apply(
+			this.calendar, ['select', this, start, end, ev, this, resources]
+		);
+
 	},
 
 	// Used by the `headHtml` method, via RowRenderer, for rendering the HTML of a day-of-week header cell
