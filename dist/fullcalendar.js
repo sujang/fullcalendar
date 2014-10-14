@@ -360,12 +360,11 @@ function Calendar(element, instanceOptions) {
 		options = mergeOptions({}, defaults, rtlDefaults, langOptions || {}, instanceOptions);
 	}
 
-
 	if (options.annotations) { // prepare annotations object
-    var annotations = {day: [], timed: []};
+		var annotations = { day: [], timed: [] };
 
 		// separate the annotations into all-day and timed
-		for (i = 0; i < options.annotations.length; i++) {
+		for (var i = 0; i < options.annotations.length; i++) {
       var annotation = options.annotations[i];
 
       if(annotation.start) {
@@ -5152,7 +5151,7 @@ function compareSegs(seg1, seg2) {
 	var data1 = seg1.event || seg1.annotation;
 	var data2 = seg2.event || seg2.annotation;
 
-	return (!!seg2.annotation - !!seg1.annotation) // annotations always go first
+	return (!!seg2.annotation - !!seg1.annotation) || // annotations always go first
 		seg1.eventStartMS - seg2.eventStartMS || // tie? earlier events go first
 		seg2.eventDurationMS - seg1.eventDurationMS || // tie? longer events go first
 		data2.allDay - data1.allDay || // tie? put all-day events first (booleans cast to 0/1)
@@ -5207,7 +5206,6 @@ $.extend(Grid.prototype, {
 
 	// Renders a `el` property for each seg, and only returns segments that successfully rendered
 	renderAnnotations: function(annotations, disableResizing) {
-		var view = this.view;
 		var html = '';
 		var renderedAnns = [];
 		var i;
