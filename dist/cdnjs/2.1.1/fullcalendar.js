@@ -2097,7 +2097,6 @@ function ResourceManager(options) {
    */
 
   function fetchResources(useCache, currentView) {
-    var cache;
     // if useCache is not defined, default to true
     useCache = (typeof useCache !== 'undefined' ? useCache : true);
     if (!useCache || cache === undefined) {
@@ -2185,7 +2184,7 @@ function ResourceManager(options) {
   }
 
   /* Event Modification Math
-   -----------------------------------------------------------------------------------------*/
+  -----------------------------------------------------------------------------------------*/
 
 
   // Modify the date(s) of an event and make this change propagate to all other events with
@@ -4614,8 +4613,8 @@ $.extend(Grid.prototype, {
 
 
 	// Renders a visual indication of a selection. Will highlight by default but can be overridden by subclasses.
-	renderSelection: function(start, end) {
-		this.renderHighlight(start, end);
+	renderSelection: function(start, end, sourceSeg) {
+		this.renderHighlight(start, end, sourceSeg);
 	},
 
 
@@ -4630,7 +4629,7 @@ $.extend(Grid.prototype, {
 
 
 	// Puts visual emphasis on a certain date range
-	renderHighlight: function(start, end) {
+	renderHighlight: function(start, end, sourceSeg) {
 		// subclasses should implement
 	},
 
@@ -5525,8 +5524,9 @@ $.extend(DayGrid.prototype, {
 
 
 	// Renders an emphasis on the given date range. `start` is an inclusive, `end` is exclusive.
-	renderHighlight: function(start, end) {
+	renderHighlight: function(start, end, sourceSeg) {
 		var segs = this.rangeToSegs(start, end);
+		var view = this.view
 		var highlightNodes = [];
 		var i, seg;
 		var el;
@@ -5534,6 +5534,12 @@ $.extend(DayGrid.prototype, {
 		// build an event skeleton for each row that needs it
 		for (i = 0; i < segs.length; i++) {
 			seg = segs[i];
+			if(view.name === "resourceDay") {
+				if(!view.hasResource(sourceSeg.event, view.resources()[seg.leftCol])) {
+					continue;
+				}
+			}
+
 			el = $(
 				this.highlightSkeletonHtml(seg.leftCol, seg.rightCol + 1) // make end exclusive
 			);
