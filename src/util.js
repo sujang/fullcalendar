@@ -188,7 +188,7 @@ function intersectionToSeg(subjectStart, subjectEnd, intervalStart, intervalEnd)
 	var segStart, segEnd;
 	var isStart, isEnd;
 
-	if (subjectEnd > intervalStart && subjectStart < intervalEnd) { // in bounds at all?
+	if (subjectEnd >= intervalStart && subjectStart < intervalEnd) { // in bounds at all?
 
 		if (subjectStart >= intervalStart) {
 			segStart = subjectStart.clone();
