@@ -45,7 +45,9 @@
         "src/agenda/AgendaWeekView.js",
         "src/agenda/AgendaDayView.js",
         "src/resource/ResourceView.js",
+        "src/resource/BasicResourceView.js",
         "src/resource/ResourceDayView.js",
+        "src/resource/ResourceWeekView.js",
         "src/outro.js"
       ],
       "styles": [

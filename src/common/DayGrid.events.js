@@ -59,7 +59,7 @@ $.extend(DayGrid.prototype, {
 		var segRows;
 		var row;
 
-		if(this.view.name !== 'resourceDay') {
+		if(this.view.name !== 'resourceDay' && this.view.name !== 'resourceWeek') {
 			annotations = this.annotationsToSegs(this.view.calendar.option('annotations').day);
 		}
 

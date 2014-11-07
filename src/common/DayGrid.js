@@ -153,7 +153,8 @@ $.extend(DayGrid.prototype, {
 		// always render a highlight underneath
 		this.renderHighlight(
 			start,
-			end || this.view.calendar.getDefaultEventEnd(true, start)
+			end || this.view.calendar.getDefaultEventEnd(true, start),
+			seg
 		);
 
 		// if a segment from the same calendar but another component is being dragged, render a helper event
@@ -213,6 +214,7 @@ $.extend(DayGrid.prototype, {
 
 			// If there is an original segment, match the top position. Otherwise, put it at the row's top level
 			if (sourceSeg && sourceSeg.row === row) {
+				alert('row:' + row);
 				skeletonTop = sourceSeg.el.position().top;
 			}
 			else {
@@ -247,7 +249,7 @@ $.extend(DayGrid.prototype, {
 	// Renders an emphasis on the given date range. `start` is an inclusive, `end` is exclusive.
 	renderHighlight: function(start, end, sourceSeg) {
 		var segs = this.rangeToSegs(start, end);
-		var view = this.view
+		var view = this.view;
 		var highlightNodes = [];
 		var i, seg;
 		var el;
@@ -257,6 +259,11 @@ $.extend(DayGrid.prototype, {
 			seg = segs[i];
 			if(view.name === "resourceDay") {
 				if(!view.hasResource(sourceSeg.event, view.resources()[seg.leftCol])) {
+					continue;
+				}
+			}
+			if(view.name === "resourceWeek") {
+				if(!view.hasResource(sourceSeg.event, view.resources()[seg.row])) {
 					continue;
 				}
 			}
@@ -306,6 +313,6 @@ $.extend(DayGrid.prototype, {
 					'</tr>' +
 				'</table>' +
 			'</div>';
-	}
+	},
 
 });

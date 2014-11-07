@@ -89,7 +89,7 @@ $.extend(Grid.prototype, {
 			segs = this.rangeToSegs(eventStart, eventEnd); // defined by the subclass
 		}
 
-		if (view.name === 'resourceDay') {
+		if (view.name === 'resourceDay' || view.name === 'resourceWeek') {
 				// Filters the events according to the resource columns
 				var resources = view.resources();
 
@@ -223,6 +223,9 @@ $.extend(Grid.prototype, {
 				if (view.name === 'resourceDay') {
 					event.resources = [view.resources()[cell.col].id];
 				}
+				if (view.name === 'resourceWeek') {
+					event.resources = [view.resources()[cell.row].id];
+				}
 
 				if (view.renderDrag(newStart, newEnd, seg)) { // have the view render a visual indication
 					mouseFollower.hide(); // if the view is already using a mock event "helper", hide our own
@@ -239,7 +242,7 @@ $.extend(Grid.prototype, {
 			dragStop: function(ev) {
 				var hasChanged = newStart && !newStart.isSame(event.start);
 
-				if (view.name === 'resourceDay') {
+				if (view.name === 'resourceDay' || view.name === 'resourceWeek') {
 					var sameResources = $(originalResources).not(event.resources).length === 0 &&
 							$(event.resources).not(originalResources).length === 0;
 					hasChanged = hasChanged || !sameResources;

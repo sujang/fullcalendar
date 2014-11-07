@@ -1,7 +1,7 @@
 /*!
- * FullCalendar v2.1.1
- * Docs & License: http://arshaw.com/fullcalendar/
- * (c) 2013 Adam Shaw
+ * <%= meta.title %> v<%= meta.version %>
+ * Docs & License: <%= meta.homepage %>
+ * (c) <%= meta.copyright %>
  */
 
 (function(factory) {
@@ -176,7 +176,7 @@ var rtlDefaults = {
 
 ;;
 
-var fc = $.fullCalendar = { version: "2.1.1" };
+var fc = $.fullCalendar = { version: "<%= meta.version %>" };
 var fcViews = fc.views = {};
 
 
@@ -4495,6 +4495,14 @@ $.extend(Grid.prototype, {
 							}
 						};
 					}
+					if (view.name === 'resourceWeek') {
+						sourceSeg = {
+							event: {
+								editable: false,
+								resources: [view.resources()[cell.row].id]
+							}
+						};
+					}
 
 					if (isSelectable) {
 						_this.renderSelection(start, end, sourceSeg);
@@ -4512,9 +4520,9 @@ $.extend(Grid.prototype, {
 					}
 					if (isSelectable) {
 						var resources;
-						if(view.name === 'resourceDay') {
-							resources = $.map(dayEl, function(column) {
-								return view.resources()[ $(column).index()-1 ].id;
+						if(view.name === 'resourceDay' || view.name === 'resourceWeek') {
+							resources = $.map(dayEl, function(el) {
+								return view.resources()[ $(el).index()-1 ].id;
 							});
 						}
 						// the selection will already have been rendered. just report it
@@ -4813,7 +4821,7 @@ $.extend(Grid.prototype, {
 			segs = this.rangeToSegs(eventStart, eventEnd); // defined by the subclass
 		}
 
-		if (view.name === 'resourceDay') {
+		if (view.name === 'resourceDay' || view.name === 'resourceWeek') {
 				// Filters the events according to the resource columns
 				var resources = view.resources();
 
@@ -4947,6 +4955,9 @@ $.extend(Grid.prototype, {
 				if (view.name === 'resourceDay') {
 					event.resources = [view.resources()[cell.col].id];
 				}
+				if (view.name === 'resourceWeek') {
+					event.resources = [view.resources()[cell.row].id];
+				}
 
 				if (view.renderDrag(newStart, newEnd, seg)) { // have the view render a visual indication
 					mouseFollower.hide(); // if the view is already using a mock event "helper", hide our own
@@ -4963,7 +4974,7 @@ $.extend(Grid.prototype, {
 			dragStop: function(ev) {
 				var hasChanged = newStart && !newStart.isSame(event.start);
 
-				if (view.name === 'resourceDay') {
+				if (view.name === 'resourceDay' || view.name === 'resourceWeek') {
 					var sameResources = $(originalResources).not(event.resources).length === 0 &&
 							$(event.resources).not(originalResources).length === 0;
 					hasChanged = hasChanged || !sameResources;
@@ -5432,7 +5443,8 @@ $.extend(DayGrid.prototype, {
 		// always render a highlight underneath
 		this.renderHighlight(
 			start,
-			end || this.view.calendar.getDefaultEventEnd(true, start)
+			end || this.view.calendar.getDefaultEventEnd(true, start),
+			seg
 		);
 
 		// if a segment from the same calendar but another component is being dragged, render a helper event
@@ -5492,6 +5504,7 @@ $.extend(DayGrid.prototype, {
 
 			// If there is an original segment, match the top position. Otherwise, put it at the row's top level
 			if (sourceSeg && sourceSeg.row === row) {
+				alert('row:' + row);
 				skeletonTop = sourceSeg.el.position().top;
 			}
 			else {
@@ -5526,7 +5539,7 @@ $.extend(DayGrid.prototype, {
 	// Renders an emphasis on the given date range. `start` is an inclusive, `end` is exclusive.
 	renderHighlight: function(start, end, sourceSeg) {
 		var segs = this.rangeToSegs(start, end);
-		var view = this.view
+		var view = this.view;
 		var highlightNodes = [];
 		var i, seg;
 		var el;
@@ -5536,6 +5549,11 @@ $.extend(DayGrid.prototype, {
 			seg = segs[i];
 			if(view.name === "resourceDay") {
 				if(!view.hasResource(sourceSeg.event, view.resources()[seg.leftCol])) {
+					continue;
+				}
+			}
+			if(view.name === "resourceWeek") {
+				if(!view.hasResource(sourceSeg.event, view.resources()[seg.row])) {
 					continue;
 				}
 			}
@@ -5585,7 +5603,7 @@ $.extend(DayGrid.prototype, {
 					'</tr>' +
 				'</table>' +
 			'</div>';
-	}
+	},
 
 });
 
@@ -5651,7 +5669,7 @@ $.extend(DayGrid.prototype, {
 		var segRows;
 		var row;
 
-		if(this.view.name !== 'resourceDay') {
+		if(this.view.name !== 'resourceDay' && this.view.name !== 'resourceWeek') {
 			annotations = this.annotationsToSegs(this.view.calendar.option('annotations').day);
 		}
 
@@ -8977,6 +8995,44 @@ $.extend(ResourceView.prototype, {
 
 ;;
 
+function BasicResourceView(calendar) {
+	BasicView.call(this, calendar); // call the super-constructor
+
+}
+
+
+BasicResourceView.prototype = createObject(BasicView.prototype); // extends BasicView
+$.extend(BasicResourceView.prototype, {
+
+	resources: function() {
+		return this.calendar.fetchResources();
+	},
+
+	hasResource: function(event, resource) {
+		if(this.opt('hasResource')) {
+			return this.opt('hasResource').apply(this, arguments);
+		}
+		
+		return event.resources && $.grep(event.resources, function(id) {
+			return id == resource.id;
+		}).length;
+	},
+
+	// // Called when a new selection is made. Updates internal state and triggers handlers.
+	// reportSelection: function(start, end, ev, resources) {
+	// 	this.isSelected = true;
+
+	// 	this.calendar.trigger.apply(
+	// 		this.calendar, ['select', this, start, end, ev, this, resources]
+	// 	);
+
+	// },
+
+
+});
+
+;;
+
 /* A day view with an all-day cell area at the top, and a time grid below by resource
 ----------------------------------------------------------------------------------------------------------------------*/
 
@@ -9021,6 +9077,65 @@ $.extend(ResourceDayView.prototype, {
 		this.title = this.calendar.formatDate(this.start, this.opt('titleFormat'));
 
 		AgendaView.prototype.render.call(this, this.resources().length || 1); // call the super-method
+	}
+
+});
+
+;;
+
+/* A day view with an all-day cell area at the top, and a time grid below by resource
+----------------------------------------------------------------------------------------------------------------------*/
+
+fcViews.resourceWeek = ResourceWeekView;
+
+function ResourceWeekView(calendar) {
+	BasicResourceView.call(this, calendar); // call the super-constructor
+
+	var superRangeToSegments = this.rangeToSegments;
+	this.rangeToSegments = function(start, end) {
+		var rowCnt = this.rowCnt;
+		var segments = [];
+
+		$.each(superRangeToSegments(start, end), function(index, segment) {
+			for (var row=0; row<rowCnt; row++) {
+				segments.push({
+					row: row,
+					leftCol: segment.leftCol,
+					rightCol: segment.rightCol,
+					isStart: segment.isStart,
+					isEnd: segment.isEnd
+				});
+			}
+		});
+		return segments;
+	};
+}
+
+ResourceWeekView.prototype = createObject(BasicResourceView.prototype); // define the super-class
+$.extend(ResourceWeekView.prototype, {
+
+	name: 'resourceWeek',
+
+	incrementDate: function(date, delta) {
+		return date.clone().stripTime().add(delta, 'weeks').startOf('week');
+	},
+
+	render: function(date) {
+
+		this.intervalStart = date.clone().stripTime().startOf('week');
+		this.intervalEnd = this.intervalStart.clone().add(1, 'weeks');
+
+		this.start = this.skipHiddenDays(this.intervalStart);
+		this.end = this.skipHiddenDays(this.intervalEnd, -1, true);
+
+		this.title = this.calendar.formatRange(
+			this.start,
+			this.end.clone().subtract(1), // make inclusive by subtracting 1 ms
+			this.opt('titleFormat'),
+			' \u2014 ' // emphasized dash
+		);
+
+		BasicView.prototype.render.call(this, this.resources().length || 1, this.getCellsPerWeek(), false); // call the super-method
 	}
 
 });

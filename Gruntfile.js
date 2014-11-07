@@ -393,12 +393,15 @@ module.exports = function(grunt) {
 	*/
 
 	config.shell['assume-unchanged'] = {
-		command: 'git update-index --assume-unchanged `git ls-files dist`'
+		// command: 'git update-index --assume-unchanged `git ls-files dist`'
+		command: 'git update-index --assume-unchanged'
 	};
 	config.shell['no-assume-unchanged'] = {
-		command: 'git update-index --no-assume-unchanged `git ls-files dist`'
+		// command: 'git update-index --no-assume-unchanged `git ls-files dist`'
+		command: 'git update-index --no-assume-unchanged'
 	};
 	config.shell['list-assume-unchanged'] = {
+		// command: 'git ls-files -v | grep \'^h\''
 		command: 'git ls-files -v | grep \'^h\''
 	};
 

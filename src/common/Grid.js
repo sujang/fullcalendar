@@ -117,6 +117,14 @@ $.extend(Grid.prototype, {
 							}
 						};
 					}
+					if (view.name === 'resourceWeek') {
+						sourceSeg = {
+							event: {
+								editable: false,
+								resources: [view.resources()[cell.row].id]
+							}
+						};
+					}
 
 					if (isSelectable) {
 						_this.renderSelection(start, end, sourceSeg);
@@ -134,9 +142,9 @@ $.extend(Grid.prototype, {
 					}
 					if (isSelectable) {
 						var resources;
-						if(view.name === 'resourceDay') {
-							resources = $.map(dayEl, function(column) {
-								return view.resources()[ $(column).index()-1 ].id;
+						if(view.name === 'resourceDay' || view.name === 'resourceWeek') {
+							resources = $.map(dayEl, function(el) {
+								return view.resources()[ $(el).index()-1 ].id;
 							});
 						}
 						// the selection will already have been rendered. just report it
