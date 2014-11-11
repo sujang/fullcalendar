@@ -17,7 +17,7 @@
 
 var defaults = {
 
-	lang: 'en',
+	lang: 'ja',
 
 	defaultTimedEventDuration: '02:00:00',
 	defaultAllDayEventDuration: { days: 1 },
@@ -149,6 +149,12 @@ var langOptionHash = {
 			week: 'ddd M/D' // override for english. different from the generated default, which is MM/DD
 		},
 		dayPopoverFormat: 'dddd, MMMM D'
+	},
+	ja: {
+		columnFormat: {
+			week: 'MM/DD(ddd)' // override for english. different from the generated default, which is MM/DD
+		},
+		dayPopoverFormat: 'MMMM D(dd)'
 	}
 };
 
@@ -4287,6 +4293,9 @@ RowRenderer.prototype = {
 	view: null, // a View object
 	cellHtml: '<td/>', // plain default HTML used for a cell when no other is available
 
+	resourceCellHtml: function(rowType, row) {
+		return '';
+	},
 
 	// Renders the HTML for a row, leveraging custom cell-HTML-renderers based on the `rowType`.
 	// Also applies the "intro" and "outro" cells, which are specified by the subclass and views.
@@ -4307,7 +4316,7 @@ RowRenderer.prototype = {
 
 		cellHtml = this.bookendCells(cellHtml, rowType, row); // apply intro and outro
 
-		return '<tr>' + cellHtml + '</tr>';
+		return '<tr>' + this.resourceCellHtml(rowType, row) + cellHtml + '</tr>';
 	},
 
 
@@ -5309,6 +5318,18 @@ $.extend(DayGrid.prototype, {
 	helperEls: null, // set of cell skeleton elements for rendering the mock event "helper"
 	highlightEls: null, // set of cell skeleton elements for rendering the highlight
 
+	bookendCells: function(cells, rowType, row) {
+		if (this.view.name === 'resourceWeek') {
+			var hasResource = this.view.resources().length > 0;
+			var tr = $(cells);
+			if (hasResource && rowType === 'eventSkeleton') {
+				cells = $('<td/>').insertBefore(tr.find('td:first'));
+			}
+		}
+
+		return Grid.prototype.bookendCells.call(this, cells, rowType, row);
+	},
+
 
 	// Renders the rows and columns into the component's `this.el`, which should already be assigned.
 	// isRigid determins whether the individual rows should ignore the contents and be a constant height.
@@ -5368,6 +5389,21 @@ $.extend(DayGrid.prototype, {
 					'</table>' +
 				'</div>' +
 			'</div>';
+	},
+
+
+	resourceCellHtml: function(rowType, row) {
+		var hasResource = this.view.resources && this.view.resources()[row];
+
+		if (this.view.name === 'resourceWeek') {
+			if (rowType === 'day' && hasResource) {
+				return '<td>' + htmlEscape(this.view.resources()[row].name) + '</td>';
+			} else {
+				return '<td></td>';
+			}
+		} else {
+			return '';
+		}
 	},
 
 
@@ -5504,7 +5540,6 @@ $.extend(DayGrid.prototype, {
 
 			// If there is an original segment, match the top position. Otherwise, put it at the row's top level
 			if (sourceSeg && sourceSeg.row === row) {
-				alert('row:' + row);
 				skeletonTop = sourceSeg.el.position().top;
 			}
 			else {
@@ -5583,6 +5618,10 @@ $.extend(DayGrid.prototype, {
 		var colCnt = this.view.colCnt;
 		var cellHtml = '';
 
+		if (this.view.name === 'resourceWeek') {
+			cellHtml += '<td></td>';
+		}
+
 		if (startCol > 0) {
 			cellHtml += '<td colspan="' + startCol + '"/>';
 		}
@@ -5616,7 +5655,6 @@ $.extend(DayGrid.prototype, {
 
 	segs: null,
 	rowStructs: null, // an array of objects, each holding information about a row's event-rendering
-
 
 	// Render the given events onto the Grid and return the rendered segments
 	renderEvents: function(events) {
@@ -5812,7 +5850,7 @@ $.extend(DayGrid.prototype, {
 			}
 
 			emptyCellsUntil(colCnt); // finish off the row
-			this.bookendCells(tr, 'eventSkeleton');
+			this.bookendCells(tr, 'eventSkeleton', row);
 			tbody.append(tr);
 		}
 
@@ -9018,15 +9056,15 @@ $.extend(BasicResourceView.prototype, {
 		}).length;
 	},
 
-	// // Called when a new selection is made. Updates internal state and triggers handlers.
-	// reportSelection: function(start, end, ev, resources) {
-	// 	this.isSelected = true;
+	// Called when a new selection is made. Updates internal state and triggers handlers.
+	reportSelection: function(start, end, ev, resources) {
+		this.isSelected = true;
 
-	// 	this.calendar.trigger.apply(
-	// 		this.calendar, ['select', this, start, end, ev, this, resources]
-	// 	);
+		this.calendar.trigger.apply(
+			this.calendar, ['select', this, start, end, ev, this, resources]
+		);
 
-	// },
+	},
 
 
 });
@@ -9117,7 +9155,7 @@ $.extend(ResourceWeekView.prototype, {
 	name: 'resourceWeek',
 
 	incrementDate: function(date, delta) {
-		return date.clone().stripTime().add(delta, 'weeks').startOf('week');
+		return BasicWeekView.prototype.incrementDate.apply(this, arguments);
 	},
 
 	render: function(date) {

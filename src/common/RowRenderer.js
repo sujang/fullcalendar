@@ -14,6 +14,9 @@ RowRenderer.prototype = {
 	view: null, // a View object
 	cellHtml: '<td/>', // plain default HTML used for a cell when no other is available
 
+	resourceCellHtml: function(rowType, row) {
+		return '';
+	},
 
 	// Renders the HTML for a row, leveraging custom cell-HTML-renderers based on the `rowType`.
 	// Also applies the "intro" and "outro" cells, which are specified by the subclass and views.
@@ -34,7 +37,7 @@ RowRenderer.prototype = {
 
 		cellHtml = this.bookendCells(cellHtml, rowType, row); // apply intro and outro
 
-		return '<tr>' + cellHtml + '</tr>';
+		return '<tr>' + this.resourceCellHtml(rowType, row) + cellHtml + '</tr>';
 	},
 
 

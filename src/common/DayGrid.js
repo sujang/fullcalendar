@@ -19,6 +19,18 @@ $.extend(DayGrid.prototype, {
 	helperEls: null, // set of cell skeleton elements for rendering the mock event "helper"
 	highlightEls: null, // set of cell skeleton elements for rendering the highlight
 
+	bookendCells: function(cells, rowType, row) {
+		if (this.view.name === 'resourceWeek') {
+			var hasResource = this.view.resources().length > 0;
+			var tr = $(cells);
+			if (hasResource && rowType === 'eventSkeleton') {
+				cells = $('<td/>').insertBefore(tr.find('td:first'));
+			}
+		}
+
+		return Grid.prototype.bookendCells.call(this, cells, rowType, row);
+	},
+
 
 	// Renders the rows and columns into the component's `this.el`, which should already be assigned.
 	// isRigid determins whether the individual rows should ignore the contents and be a constant height.
@@ -78,6 +90,21 @@ $.extend(DayGrid.prototype, {
 					'</table>' +
 				'</div>' +
 			'</div>';
+	},
+
+
+	resourceCellHtml: function(rowType, row) {
+		var hasResource = this.view.resources && this.view.resources()[row];
+
+		if (this.view.name === 'resourceWeek') {
+			if (rowType === 'day' && hasResource) {
+				return '<td>' + htmlEscape(this.view.resources()[row].name) + '</td>';
+			} else {
+				return '<td></td>';
+			}
+		} else {
+			return '';
+		}
 	},
 
 
@@ -214,7 +241,6 @@ $.extend(DayGrid.prototype, {
 
 			// If there is an original segment, match the top position. Otherwise, put it at the row's top level
 			if (sourceSeg && sourceSeg.row === row) {
-				alert('row:' + row);
 				skeletonTop = sourceSeg.el.position().top;
 			}
 			else {
@@ -292,6 +318,10 @@ $.extend(DayGrid.prototype, {
 	highlightSkeletonHtml: function(startCol, endCol) {
 		var colCnt = this.view.colCnt;
 		var cellHtml = '';
+
+		if (this.view.name === 'resourceWeek') {
+			cellHtml += '<td></td>';
+		}
 
 		if (startCol > 0) {
 			cellHtml += '<td colspan="' + startCol + '"/>';

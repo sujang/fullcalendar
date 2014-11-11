@@ -1,7 +1,7 @@
 
 var defaults = {
 
-	lang: 'en',
+	lang: 'ja',
 
 	defaultTimedEventDuration: '02:00:00',
 	defaultAllDayEventDuration: { days: 1 },
@@ -133,6 +133,12 @@ var langOptionHash = {
 			week: 'ddd M/D' // override for english. different from the generated default, which is MM/DD
 		},
 		dayPopoverFormat: 'dddd, MMMM D'
+	},
+	ja: {
+		columnFormat: {
+			week: 'MM/DD(ddd)' // override for english. different from the generated default, which is MM/DD
+		},
+		dayPopoverFormat: 'MMMM D(dd)'
 	}
 };
 

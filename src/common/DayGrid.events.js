@@ -7,7 +7,6 @@ $.extend(DayGrid.prototype, {
 	segs: null,
 	rowStructs: null, // an array of objects, each holding information about a row's event-rendering
 
-
 	// Render the given events onto the Grid and return the rendered segments
 	renderEvents: function(events) {
 		var rowStructs = this.rowStructs = this.renderEventRows(events);
@@ -202,7 +201,7 @@ $.extend(DayGrid.prototype, {
 			}
 
 			emptyCellsUntil(colCnt); // finish off the row
-			this.bookendCells(tr, 'eventSkeleton');
+			this.bookendCells(tr, 'eventSkeleton', row);
 			tbody.append(tr);
 		}
 
