@@ -373,9 +373,15 @@ function Calendar(element, instanceOptions) {
 	// View Rendering
 	// -----------------------------------------------------------------------------------
 
+	var onChangeView;
+	if (options.onChangeView) {onChangeView = options.onChangeView}
 
-	function changeView(viewName) {
+
+	function changeView(viewName, doCallback) {
 		renderView(0, viewName);
+		if (doCallback && onChangeView) {
+			onChangeView(viewName);
+		}
 	}
 
 

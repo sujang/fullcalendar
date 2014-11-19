@@ -76,7 +76,7 @@ function Header(calendar, options) {
 						}
 						else if (fcViews[buttonName]) { // a view name
 							buttonClick = function() {
-								calendar.changeView(buttonName);
+								calendar.changeView(buttonName, true);
 							};
 							viewsWithButtons.push(buttonName);
 						}
