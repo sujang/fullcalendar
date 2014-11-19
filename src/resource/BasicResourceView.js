@@ -30,7 +30,7 @@ $.extend(BasicResourceView.prototype, {
 			this.calendar, ['select', this, start, end, ev, this, resources]
 		);
 
-	},
+	}
 
 
 });

@@ -343,6 +343,6 @@ $.extend(DayGrid.prototype, {
 					'</tr>' +
 				'</table>' +
 			'</div>';
-	},
+	}
 
 });
