@@ -22,7 +22,7 @@ var defaults = {
 	weekNumberTitle: 'W',
 	weekNumberCalculation: 'local',
 	
-	//editable: false,
+	editable: false,
 	
 	// event ajax
 	lazyFetching: true,
