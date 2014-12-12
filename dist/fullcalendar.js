@@ -38,7 +38,7 @@ var defaults = {
 	weekNumberTitle: 'W',
 	weekNumberCalculation: 'local',
 	
-	//editable: false,
+	editable: false,
 	
 	// event ajax
 	lazyFetching: true,
@@ -709,9 +709,15 @@ function Calendar(element, instanceOptions) {
 	// View Rendering
 	// -----------------------------------------------------------------------------------
 
+	var onChangeView;
+	if (options.onChangeView) {onChangeView = options.onChangeView}
 
-	function changeView(viewName) {
+
+	function changeView(viewName, doCallback) {
 		renderView(0, viewName);
+		if (doCallback && onChangeView) {
+			onChangeView(viewName);
+		}
 	}
 
 
@@ -1170,7 +1176,7 @@ function Header(calendar, options) {
 						}
 						else if (fcViews[buttonName]) { // a view name
 							buttonClick = function() {
-								calendar.changeView(buttonName);
+								calendar.changeView(buttonName, true);
 							};
 							viewsWithButtons.push(buttonName);
 						}
@@ -5642,7 +5648,7 @@ $.extend(DayGrid.prototype, {
 					'</tr>' +
 				'</table>' +
 			'</div>';
-	},
+	}
 
 });
 
@@ -9064,7 +9070,7 @@ $.extend(BasicResourceView.prototype, {
 			this.calendar, ['select', this, start, end, ev, this, resources]
 		);
 
-	},
+	}
 
 
 });
